@@ -11,6 +11,7 @@ contract NFTMarket is Ownable {
 
   uint256 private _itemIds; // item의 id (Counting 역할)
   uint256 private _itemSoldcount;
+  uint256 private _itemCanceldCount;
 
   event MarketItemChanged(
     uint256 itemId,
@@ -136,18 +137,6 @@ contract NFTMarket is Ownable {
     payable(targetItem.seller).transfer(targetItem.price);
     payable(msg.sender).transfer(cashback);
 
-    
-/**
-
-  event MarketItemChanged(
-    uint256 itemId,
-    address nftContract,
-    uint256 tokenId,
-    uint256 price,
-    address seller,
-    address buyer,
-    uint8 status
-  ); */
     emit MarketItemChanged(
       targetItem.itemId,
       targetItem.nftContract,
@@ -159,9 +148,44 @@ contract NFTMarket is Ownable {
     );
   }
 
-  // 5. 아이템 취소
+  // 5. 마켓 아이템 등록 취소
+  function cancelMarketItem(uint256 itemId) external {
+    // (1) itemId에 해당하는 MarketItem 구조체 변수를 할당
+    // storage(값 변경 O) vs memory(값 변경 X)
+    MarketItem storage targetItem = _marketItems[itemId];
+    // (2) 해당 MarketItem의 판매자가 본인이 맞는지 확인
+    require((targetItem.seller == msg.sender) || (owner() == msg.sender), "Only Item's seller can cancel marketItem");
+    // (3) _alreadyMarketItem 해제
+    _alreadyMarketItem[targetItem.nftContract][targetItem.tokenId] = false;
+    // (4) uint _itemCanceldCount 변수 증가
+    _itemCanceldCount++; 
+    // (5) 해당 MarketItem 구조체 변수의 status 변경
+    targetItem.status = 0;
+  }
 
   // 6. 아이템 리스트 가져오기(필터별로) external view
+  // - 현재 판매중인(구입이 가능한) marketItem만 모아서 구조체로 return하는 함수를 생성
+  // - 외부에서 호출이 가능하고 가스가 들지 않아야 함.
+  function fetchActiveMarketItems() external view returns(MarketItem[] memory) {
+    uint256 activeItemCount = _itemIds - _itemSoldcount - _itemCanceldCount;
+    
+    MarketItem[] memory activeMarketItems = new MarketItem[](activeItemCount); // return할 배열
+
+    
+    uint256 itemIdx = 0;
+    for (uint256 i=0; i<_itemIds; i++){
+      if (_marketItems[i].status == 1){
+        activeMarketItems[itemIdx] = _marketItems[i];
+        itemIdx++;
+      }
+    }
+    return activeMarketItems;
+  }
+
+  // 전체 배열 가져오기
+  function marketItems() public view returns(MarketItem[] memory){
+    return _marketItems;
+  }
 
 
   function itemPriceWithFee(uint256 _itemId) public view returns(uint256){
@@ -169,8 +193,4 @@ contract NFTMarket is Ownable {
     uint256 fee = marketItem.price * _marketFee / 100;
     return fee + marketItem.price;
   }
-
-
-
-
 }
