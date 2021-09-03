@@ -47,7 +47,10 @@ export default function MyTokenPage({ history, location, match }) {
         {myTokens.map((tokenId) => {
           return (
             <Col xs={12} md={4}>
-              <TokenItem tokenId={tokenId} />
+              <TokenItem
+                tokenId={tokenId}
+                contractAddr={nftContract.options.address}
+              />
             </Col>
           );
         })}
