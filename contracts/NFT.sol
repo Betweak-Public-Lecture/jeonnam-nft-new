@@ -11,6 +11,12 @@ contract NFT is ERC721URIStorage {
 
   constructor() ERC721("ART NFT", "ANT") {
   }
+
+  // key: index(0부터 1씩증가시킴.) // value: 실제 tokenId
+  mapping(uint256 => uint256) indexToTokenId;
+  uint256 mappingCount;
+
+
   
   /**
    0. _tokenURI => tokenID 만들기
@@ -23,8 +29,30 @@ contract NFT is ERC721URIStorage {
     _mint(msg.sender, tokenId);
     _setTokenURI(tokenId, _tokenURI);
     
+    indexToTokenId[mappingCount] = tokenId;
+    mappingCount++;
+
     emit TokenCreated(tokenId, _tokenURI, msg.sender);
     return tokenId;
+  }
+
+  function fetchOwnedToken(address _owner) external view returns(uint256[] memory){
+    uint256 balance = balanceOf(_owner);
+    
+    // return 할 배열
+    uint256[] memory allTokens = new uint256[](balance); 
+
+    uint256 idxCount = 0;
+
+    for (uint256 i=0; i<mappingCount; i++){
+      uint256 tokenId = indexToTokenId[i]; // tokenId
+      address owner = ownerOf(tokenId); // 해당 token의 owner
+      if (owner == _owner){
+        allTokens[idxCount] = tokenId;
+        idxCount++;
+      }
+    }
+    return allTokens;
   }
 
   function _stringToUint(string memory _str) pure internal returns (uint256){

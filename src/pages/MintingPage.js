@@ -5,6 +5,8 @@ import ImageUploader from "react-images-upload";
 import { NFTStorage, File } from "nft.storage";
 import { NFT_STORAGE_API_KEY } from "../config";
 
+import web3, { nftContract } from "../utils/web3";
+
 /**
  * 1. react-images-upload를 통해 image업로드를 받는다.
  * 2. 해당 image파일을 state로 set하고,
@@ -17,25 +19,32 @@ import { NFT_STORAGE_API_KEY } from "../config";
 
 const client = new NFTStorage({ token: NFT_STORAGE_API_KEY });
 
-export default function MintingPage(props) {
+export default function MintingPage({ history, location, match }) {
   // 1. react-images-upload를 통해 image업로드를 받는다.
   const [uploadedImage, setUploadedImage] = React.useState(null);
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
 
-  const onMint = React.useCallback(() => {
-    client
-      .store({
-        name: title,
-        description: description,
-        image: new File(uploadedImage, uploadedImage[0].name, {
-          type: uploadedImage[0].type,
-        }),
-      })
-      .then((token) => {
-        console.log(token);
-      });
-  }, [title, description, uploadedImage]);
+  const onMint = React.useCallback(async () => {
+    const token = await client.store({
+      name: title,
+      description: description,
+      image: new File(uploadedImage, uploadedImage[0].name, {
+        type: uploadedImage[0].type,
+      }),
+    });
+
+    console.log(token);
+    //  * 5. 저장이 끝나면 해당 token의 id(ipnft)를 받아서 NFT contract에 저장한다(createToken).
+    const accounts = await web3.eth.getAccounts();
+    const account = accounts[0];
+    const receipt = await nftContract.methods.createToken(token.ipnft).send({
+      from: account,
+    });
+    console.log(receipt);
+    //  * 6. TX발생이 완료되면, MyToken페이지로 이동시킨다.
+    history.push("/mytoken");
+  }, [title, description, uploadedImage, history]);
 
   return (
     <Container>
